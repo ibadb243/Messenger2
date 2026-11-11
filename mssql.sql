@@ -15,7 +15,7 @@ IF OBJECT_ID('dbo.Users') IS NULL
         avatar_url    NVARCHAR(500)     NULL,
         email         NVARCHAR(255)     NOT NULL,
         password_hash NVARCHAR(255)     NOT NULL,
-        created_at    DATETIME2(0)      NOT NULL CONSTRAINT DF_Users_created_at DEFAULT SYSUTCDATETIME(),
+        created_at    DATETIMEOFFSET    NOT NULL CONSTRAINT DF_Users_created_at DEFAULT SYSUTCDATETIME(),
         CONSTRAINT PK_Users PRIMARY KEY (id),
         CONSTRAINT UQ_Users_email UNIQUE (email)
     );
@@ -29,7 +29,7 @@ IF OBJECT_ID('dbo.Chats') IS NULL
         avatar_url  NVARCHAR(500)     NULL,
         type        VARCHAR(10)       NOT NULL,
         created_by  INT               NOT NULL,
-        created_at  DATETIME2(0)      NOT NULL CONSTRAINT DF_Chats_created_at DEFAULT SYSUTCDATETIME(),
+        created_at  DATETIMEOFFSET    NOT NULL CONSTRAINT DF_Chats_created_at DEFAULT SYSUTCDATETIME(),
         CONSTRAINT PK_Chats PRIMARY KEY (id),
         CONSTRAINT CK_Chats_type CHECK (type IN ('private', 'group')),
         CONSTRAINT FK_Chats_Users FOREIGN KEY (created_by) REFERENCES dbo.Users(id)
@@ -39,10 +39,10 @@ GO
 USE messenger;
 IF OBJECT_ID('dbo.Members') IS NULL
     CREATE TABLE dbo.Members (
-        user_id     INT           NOT NULL,
-        chat_id     INT           NOT NULL,
-        role        VARCHAR(10)   NOT NULL CONSTRAINT DF_Members_role DEFAULT 'member',
-        created_at  DATETIME2(0)  NOT NULL CONSTRAINT DF_Members_created_at DEFAULT SYSUTCDATETIME(),
+        user_id     INT            NOT NULL,
+        chat_id     INT            NOT NULL,
+        role        VARCHAR(10)    NOT NULL CONSTRAINT DF_Members_role DEFAULT 'member',
+        created_at  DATETIMEOFFSET NOT NULL CONSTRAINT DF_Members_created_at DEFAULT SYSUTCDATETIME(),
         CONSTRAINT PK_Members PRIMARY KEY (user_id, chat_id),
         CONSTRAINT CK_Members_role CHECK (role IN ('owner', 'admin', 'member')),
         CONSTRAINT FK_Members_Users FOREIGN KEY (user_id) REFERENCES dbo.Users(id),
@@ -57,9 +57,9 @@ IF OBJECT_ID('dbo.Messages') IS NULL
         sender_id   INT                  NOT NULL,
         chat_id     INT                  NOT NULL,
         text        NVARCHAR(MAX)        NOT NULL,
-        created_at  DATETIME2(0)         NOT NULL CONSTRAINT DF_Messages_created_at DEFAULT SYSUTCDATETIME(),
-        edited_at   DATETIME2(0)         NULL,
-        deleted_at  DATETIME2(0)         NULL,
+        created_at  DATETIMEOFFSET       NOT NULL CONSTRAINT DF_Messages_created_at DEFAULT SYSUTCDATETIME(),
+        edited_at   DATETIMEOFFSET       NULL,
+        deleted_at  DATETIMEOFFSET       NULL,
         CONSTRAINT PK_Messages PRIMARY KEY (id),
         CONSTRAINT FK_Messages_Users FOREIGN KEY (sender_id) REFERENCES dbo.Users(id),
         CONSTRAINT FK_Messages_Chats FOREIGN KEY (chat_id)   REFERENCES dbo.Chats(id)
