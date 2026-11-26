@@ -121,6 +121,18 @@ services:
     logging: *default-logging
     networks: [messenger]
 
+  web:
+    build:
+      context: ./Web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    logging: *default-logging
+    networks: [messenger]
+
   syncer:
     build:
       context: .

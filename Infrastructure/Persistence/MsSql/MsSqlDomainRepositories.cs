@@ -15,6 +15,13 @@ public class UserRepository(MsSqlDbContext db) : EfRepository<User, int>(db), IU
     public Task<bool> EmailExistsAsync(string email, CancellationToken ct = default) =>
         Db.Users.AnyAsync(u => u.Email == email, ct);
 
+    public async Task<IReadOnlyList<User>> SearchAsync(string query, int limit, CancellationToken ct = default) =>
+        await Db.Users.AsNoTracking()
+            .Where(u => u.FirstName.Contains(query) || u.LastName.Contains(query) || u.Email.Contains(query))
+            .OrderBy(u => u.FirstName).ThenBy(u => u.LastName)
+            .Take(limit)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<User>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default) =>
         await Db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).OrderBy(u => u.Id).ToListAsync(ct);
 }

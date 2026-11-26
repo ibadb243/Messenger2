@@ -9,4 +9,5 @@
   <Project Path="Domain/Domain.csproj" />
   <Project Path="Infrastructure/Infrastructure.csproj" />
   <Project Path="Syncer/Syncer.csproj" />
+  <Project Path="Web/Web.esproj" />
 </Solution>

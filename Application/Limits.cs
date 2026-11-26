@@ -14,4 +14,7 @@ public static class Limits
 
     public const int DefaultPageSize = 50;
     public const int MaxPageSize = 100;
+
+    public const int SearchMinLength = 2;
+    public const int SearchMaxResults = 20;
 }

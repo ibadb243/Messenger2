@@ -18,6 +18,17 @@ public class UserService(IUserRepository users)
         return user.ToDto();
     }
 
+    /// <summary>Поиск пользователей для начала чата или добавления в группу; текущий пользователь исключается.</summary>
+    public async Task<IReadOnlyList<UserDto>> SearchAsync(string? query, int currentUserId, CancellationToken ct = default)
+    {
+        var text = query?.Trim() ?? "";
+        if (text.Length < Limits.SearchMinLength)
+            throw new ValidationException($"Запрос поиска: минимум {Limits.SearchMinLength} символа.");
+
+        var found = await users.SearchAsync(text, Limits.SearchMaxResults + 1, ct);
+        return found.Where(u => u.Id != currentUserId).Take(Limits.SearchMaxResults).Select(u => u.ToDto()).ToList();
+    }
+
     public async Task<MeDto> UpdateProfileAsync(int userId, UpdateProfileRequest request, CancellationToken ct = default)
     {
         Validate.Name(request.FirstName, "Имя");

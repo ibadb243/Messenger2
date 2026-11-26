@@ -17,6 +17,9 @@ public static class UserEndpoints
         group.MapPut("/me", async (UpdateProfileRequest request, ClaimsPrincipal user, UserService users, CancellationToken ct) =>
             Results.Ok(await users.UpdateProfileAsync(user.GetUserId(), request, ct)));
 
+        group.MapGet("/search", async (string? q, ClaimsPrincipal user, UserService users, CancellationToken ct) =>
+            Results.Ok(await users.SearchAsync(q, user.GetUserId(), ct)));
+
         group.MapGet("/{id:int}", async (int id, UserService users, CancellationToken ct) =>
             Results.Ok(await users.GetByIdAsync(id, ct)));
     }

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.586930">
+  <PropertyGroup>
+    <!-- Запуск из Visual Studio: dev-сервер Vite (Api должен быть доступен на http://localhost:8080). -->
+    <StartupCommand>npm run dev</StartupCommand>
+    <ShouldRunNpmInstall>true</ShouldRunNpmInstall>
+    <ShouldRunBuildScript>true</ShouldRunBuildScript>
+    <BuildCommand>npm run build</BuildCommand>
+    <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
+  </PropertyGroup>
+</Project>

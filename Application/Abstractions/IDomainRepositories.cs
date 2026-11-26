@@ -7,6 +7,9 @@ public interface IUserRepository : IRepository<User, int>
     Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
     Task<IReadOnlyList<User>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default);
+
+    /// <summary>Поиск по подстроке в имени, фамилии или email (без учёта регистра).</summary>
+    Task<IReadOnlyList<User>> SearchAsync(string query, int limit, CancellationToken ct = default);
 }
 
 public interface IChatRepository : IRepository<Chat, int>

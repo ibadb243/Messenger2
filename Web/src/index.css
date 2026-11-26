@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/*
+  Палитра и правило 60-30-10:
+  ink       #0D1821  ~60%  фон приложения и область сообщений
+  yale      #344966  ~20%  боковая панель, шапки, карточки, поля ввода
+  blush     #E6AACE  ~10%  главные действия и свои сообщения
+  porcelain #F0F4EF  ~7%   текст
+  sage      #BFCC94  ~3%   мелкие акценты: фокус, бейджи, статусы
+*/
+@theme {
+  --color-ink: #0d1821;
+  --color-yale: #344966;
+  --color-blush: #e6aace;
+  --color-porcelain: #f0f4ef;
+  --color-sage: #bfcc94;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink text-porcelain antialiased;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+::selection {
+  @apply bg-sage text-ink;
+}
+
+/* Тонкие полосы прокрутки в цветах темы */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-yale) transparent;
+}
