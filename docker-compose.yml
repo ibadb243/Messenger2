@@ -32,6 +32,25 @@ services:
       Cassandra__Port: 9042
       Cassandra__Keyspace: messenger
       Cassandra__TruncateTimeoutMs: 60000
+      Serilog__MinimumLevel__Default: Information
+
+  syncer:
+    build:
+      context: .
+      dockerfile: Syncer/Dockerfile
+    container_name: my_syncer
+    depends_on:
+      - mssql
+      - cassandra
+    restart: on-failure
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      # Пароль в строке подключения должен совпадать с MSSQL_SA_PASSWORD выше.
+      ConnectionStrings__MsSqlServer: "Server=mssql,1433;Database=messenger;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True"
+      Cassandra__Hosts__0: cassandra
+      Cassandra__Port: 9042
+      Cassandra__Keyspace: messenger
+      Cassandra__TruncateTimeoutMs: 60000
       Sync__IntervalSeconds: 5
       Sync__ParallelDegree: 5
       Serilog__MinimumLevel__Default: Information

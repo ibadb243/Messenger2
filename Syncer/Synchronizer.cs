@@ -1,13 +1,21 @@
-﻿using System.Data;
-using Microsoft.EntityFrameworkCore;
+using Messenger2.Application;
+using Messenger2.Application.Abstractions;
+using Messenger2.Application.Models;
+using Messenger2.Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Messenger2;
+namespace Messenger2.Syncer;
 
 public class Synchronizer(
-    MsSqlDbContext db,
-    MsSqlChangeTracking ct,
-    CassandraStore store,
+    IChangeTrackingRepository changes,
+    ISourceDataRepository source,
+    ISyncStateRepository state,
+    IReadStoreMaintenance maintenance,
+    IUserReadRepository userRepo,
+    IChatReadRepository chatRepo,
+    IMemberReadRepository memberRepo,
+    IMessageReadRepository messageRepo,
     IOptions<SyncOptions> options,
     ILogger<Synchronizer> logger)
 {
@@ -15,16 +23,16 @@ public class Synchronizer(
 
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
-        var saved = await store.LoadVersionsAsync();
+        var saved = await state.LoadVersionsAsync();
 
-        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Snapshot, cancellationToken);
+        await using var tx = await changes.BeginSnapshotAsync(cancellationToken);
 
-        var current = await ct.CurrentVersionAsync(cancellationToken);
+        var current = await changes.CurrentVersionAsync(cancellationToken);
 
         var reloadReasons = new List<string>();
         foreach (var table in MsSqlTables.All)
         {
-            var minValid = await ct.MinValidVersionAsync(table, cancellationToken);
+            var minValid = await changes.MinValidVersionAsync(table, cancellationToken);
             if (!saved.TryGetValue(table, out var last))
                 reloadReasons.Add($"{table}: version missing");
             else if (last < minValid)
@@ -46,24 +54,24 @@ public class Synchronizer(
             return;
         }
 
-        var users = await ct.UserChangesAsync(saved[MsSqlTables.Users], cancellationToken);
-        var chats = await ct.ChatChangesAsync(saved[MsSqlTables.Chats], cancellationToken);
-        var members = await ct.MemberChangesAsync(saved[MsSqlTables.Members], cancellationToken);
-        var messages = await ct.MessageChangesAsync(saved[MsSqlTables.Messages], cancellationToken);
+        var users = await changes.UserChangesAsync(saved[MsSqlTables.Users], cancellationToken);
+        var chats = await changes.ChatChangesAsync(saved[MsSqlTables.Chats], cancellationToken);
+        var members = await changes.MemberChangesAsync(saved[MsSqlTables.Members], cancellationToken);
+        var messages = await changes.MessageChangesAsync(saved[MsSqlTables.Messages], cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
         await ApplyAsync(users, ApplyUserAsync, cancellationToken);
-        await store.SaveVersionAsync(MsSqlTables.Users, current);
+        await state.SaveVersionAsync(MsSqlTables.Users, current);
 
         await ApplyAsync(chats, ApplyChatAsync, cancellationToken);
-        await store.SaveVersionAsync(MsSqlTables.Chats, current);
+        await state.SaveVersionAsync(MsSqlTables.Chats, current);
 
         await ApplyAsync(members, ApplyMemberAsync, cancellationToken);
-        await store.SaveVersionAsync(MsSqlTables.Members, current);
+        await state.SaveVersionAsync(MsSqlTables.Members, current);
 
         var orphaned = messages.Count(m => !m.RowExists);
         await ApplyAsync(messages.Where(m => m.RowExists), ApplyMessageAsync, cancellationToken);
-        await store.SaveVersionAsync(MsSqlTables.Messages, current);
+        await state.SaveVersionAsync(MsSqlTables.Messages, current);
 
         if (orphaned > 0) logger.LogDebug("Skipped {Count} physically deleted messages without chat_id (expected on chat cascade delete)", orphaned);
 
@@ -74,18 +82,18 @@ public class Synchronizer(
 
     private Task ApplyUserAsync(UserChange c) =>
         c.RowExists
-            ? store.UpsertUserAsync(new UserById
+            ? userRepo.UpsertAsync(new UserById
             {
                 Id = c.Id,
                 FirstName = c.FirstName!,
                 LastName = c.LastName!,
                 AvatarUrl = c.AvatarUrl,
             })
-            : store.DeleteUserAsync(c.Id);
+            : userRepo.DeleteAsync(c.Id);
 
     private Task ApplyChatAsync(ChatChange c) =>
         c.RowExists
-            ? store.UpsertChatAsync(new ChatById
+            ? chatRepo.UpsertAsync(new ChatById
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -94,19 +102,19 @@ public class Synchronizer(
                 CreatedBy = c.CreatedBy!.Value,
                 CreatedAt = c.CreatedAt!.Value,
             })
-            : store.DeleteChatAsync(c.Id);
+            : chatRepo.DeleteAsync(c.Id);
 
     private Task ApplyMemberAsync(MemberChange c) =>
         c.RowExists
-            ? store.UpsertMemberAsync(
+            ? memberRepo.UpsertAsync(
                 NewMemberByChat(c.ChatId, c.UserId, c.Role!, c.CreatedAt!.Value),
                 NewChatByUser(c.UserId, c.ChatId, c.Role!, c.CreatedAt!.Value))
-            : store.DeleteMemberAsync(c.UserId, c.ChatId);
+            : memberRepo.DeleteAsync(c.UserId, c.ChatId);
 
     private Task ApplyMessageAsync(MessageChange c) =>
         c.DeletedAt is not null
-            ? store.DeleteMessageAsync(c.ChatId!.Value, c.Id)
-            : store.UpsertMessageAsync(new MessageByChat
+            ? messageRepo.DeleteAsync(c.ChatId!.Value, c.Id)
+            : messageRepo.UpsertAsync(new MessageByChat
             {
                 ChatId = c.ChatId!.Value,
                 Id = c.Id,
@@ -118,9 +126,9 @@ public class Synchronizer(
 
     private async Task FullReloadAsync(long version, CancellationToken cancellationToken)
     {
-        await store.TruncateAllAsync();
+        await maintenance.TruncateAllAsync();
 
-        await ApplyAsync(ct.AllUsers(), u => store.UpsertUserAsync(new UserById
+        await ApplyAsync(source.AllUsers(), u => userRepo.UpsertAsync(new UserById
         {
             Id = u.Id,
             FirstName = u.FirstName,
@@ -128,7 +136,7 @@ public class Synchronizer(
             AvatarUrl = u.AvatarUrl,
         }), cancellationToken);
 
-        await ApplyAsync(ct.AllChats(), c => store.UpsertChatAsync(new ChatById
+        await ApplyAsync(source.AllChats(), c => chatRepo.UpsertAsync(new ChatById
         {
             Id = c.Id,
             Name = c.Name,
@@ -138,15 +146,15 @@ public class Synchronizer(
             CreatedAt = c.CreatedAt,
         }), cancellationToken);
 
-        await ApplyAsync(ct.AllMembers(), m =>
+        await ApplyAsync(source.AllMembers(), m =>
         {
             var role = m.Role.ToString().ToLowerInvariant();
-            return store.UpsertMemberAsync(
+            return memberRepo.UpsertAsync(
                 NewMemberByChat(m.ChatId, m.UserId, role, m.CreatedAt),
                 NewChatByUser(m.UserId, m.ChatId, role, m.CreatedAt));
         }, cancellationToken);
 
-        await ApplyAsync(ct.AllLiveMessages(), m => store.UpsertMessageAsync(new MessageByChat
+        await ApplyAsync(source.AllLiveMessages(), m => messageRepo.UpsertAsync(new MessageByChat
         {
             ChatId = m.ChatId,
             Id = m.Id,
@@ -158,7 +166,7 @@ public class Synchronizer(
 
         // Версии пишем последними: пока их нет, незавершённая перезагрузка повторится.
         foreach (var table in MsSqlTables.All)
-            await store.SaveVersionAsync(table, version);
+            await state.SaveVersionAsync(table, version);
 
         logger.LogInformation("Full reload completed, version {Version}", version);
     }

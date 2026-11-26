@@ -1,18 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Messenger2;
-
-public class SyncOptions
-{
-    public const string SectionName = "Sync";
-
-    [Range(1, int.MaxValue)]
-    public int IntervalSeconds { get; set; } = 5;
-
-    /// <summary>Сколько записей параллельно пишется в Cassandra.</summary>
-    [Range(1, 256)]
-    public int ParallelDegree { get; set; } = 5;
-}
+namespace Messenger2.Infrastructure.Persistence.CassandraDb;
 
 public class CassandraOptions
 {

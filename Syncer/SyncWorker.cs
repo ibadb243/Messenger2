@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 
-namespace Messenger2;
+namespace Messenger2.Syncer;
 
 public class SyncWorker(
     IServiceScopeFactory scopes,

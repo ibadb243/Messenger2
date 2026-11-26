@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Messenger2.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace Messenger2;
+namespace Messenger2.Infrastructure.Persistence.MsSql;
 
 public class MsSqlDbContext(DbContextOptions<MsSqlDbContext> options) : DbContext(options)
 {

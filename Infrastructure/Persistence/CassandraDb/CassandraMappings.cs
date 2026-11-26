@@ -1,6 +1,7 @@
-﻿using Cassandra.Mapping;
+using Messenger2.Application.Models;
+using Cassandra.Mapping;
 
-namespace Messenger2;
+namespace Messenger2.Infrastructure.Persistence.CassandraDb;
 
 public class CassandraMappings : Mappings
 {

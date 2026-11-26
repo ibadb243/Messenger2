@@ -1,10 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+using System.Data;
+using Messenger2.Application;
+using Messenger2.Application.Abstractions;
+using Messenger2.Application.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
-namespace Messenger2;
+namespace Messenger2.Infrastructure.Persistence.MsSql;
 
-public class MsSqlChangeTracking(MsSqlDbContext db)
-// CHANGETABLE table names below mirror MsSqlTables: FromSql cannot parameterize identifiers.
+/// <summary>Реализация <see cref="IChangeTrackingRepository"/> поверх EF Core / MS SQL Change Tracking.</summary>
+public class MsSqlChangeTrackingRepository(MsSqlDbContext db) : IChangeTrackingRepository
 {
+    // Имена таблиц в CHANGETABLE ниже совпадают с MsSqlTables: FromSql не умеет параметризовать идентификаторы.
+    public async Task<ISourceTransaction> BeginSnapshotAsync(CancellationToken ct) =>
+        new EfSourceTransaction(await db.Database.BeginTransactionAsync(IsolationLevel.Snapshot, ct));
+
     public async Task<long> CurrentVersionAsync(CancellationToken ct)
     {
         var version = await db.Database
@@ -62,11 +71,10 @@ public class MsSqlChangeTracking(MsSqlDbContext db)
             FROM CHANGETABLE(CHANGES dbo.Messages, {since}) AS ct
             LEFT JOIN dbo.Messages AS m ON m.id = ct.id
             """).ToListAsync(ct);
+}
 
-    public IAsyncEnumerable<User> AllUsers() => db.Users.AsNoTracking().AsAsyncEnumerable();
-    public IAsyncEnumerable<Chat> AllChats() => db.Chats.AsNoTracking().AsAsyncEnumerable();
-    public IAsyncEnumerable<Member> AllMembers() => db.Members.AsNoTracking().AsAsyncEnumerable();
-
-    public IAsyncEnumerable<Message> AllLiveMessages() =>
-        db.Messages.AsNoTracking().Where(m => m.DeletedAt == null).AsAsyncEnumerable();
+internal sealed class EfSourceTransaction(IDbContextTransaction tx) : ISourceTransaction
+{
+    public Task CommitAsync(CancellationToken ct) => tx.CommitAsync(ct);
+    public ValueTask DisposeAsync() => tx.DisposeAsync();
 }
