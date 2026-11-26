@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS base
-USER $APP_UID
 WORKDIR /app
+# Каталог для файловых логов Serilog: пользователь приложения не root и не сможет создать его сам.
+RUN mkdir -p /app/logs && chown $APP_UID /app/logs
+USER $APP_UID
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release

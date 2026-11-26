@@ -51,7 +51,7 @@ try
     builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
     builder.Services.AddProblemDetails();
     builder.Services.AddExceptionHandler<AppExceptionHandler>();
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(o => o.AddDocumentTransformer<BearerSecurityTransformer>());
 
     var app = builder.Build();
 
@@ -61,7 +61,14 @@ try
     app.UseAuthorization();
 
     if (app.Environment.IsDevelopment())
+    {
         app.MapOpenApi();
+        app.UseSwaggerUI(o =>
+        {
+            o.SwaggerEndpoint("/openapi/v1.json", "Messenger2 API v1");
+            o.RoutePrefix = "swagger";
+        });
+    }
 
     app.MapGet("/", () => "Messenger2 API").AllowAnonymous();
     app.MapGet("/health", () => Results.Ok()).AllowAnonymous();

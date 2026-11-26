@@ -2,8 +2,10 @@
 
 # Этот этап используется при запуске из VS в быстром режиме (по умолчанию для конфигурации отладки)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-USER $APP_UID
 WORKDIR /app
+# Каталог для файловых логов Serilog: пользователь приложения не root и не сможет создать его сам.
+RUN mkdir -p /app/logs && chown $APP_UID /app/logs
+USER $APP_UID
 EXPOSE 8080
 EXPOSE 8081
 
