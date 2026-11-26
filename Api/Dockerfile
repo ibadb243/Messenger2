@@ -15,19 +15,19 @@ WORKDIR /src
 COPY ["Domain/Domain.csproj", "Domain/"]
 COPY ["Application/Application.csproj", "Application/"]
 COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
-COPY ["Messenger2/Messenger2.csproj", "Messenger2/"]
-RUN dotnet restore "./Messenger2/Messenger2.csproj"
+COPY ["Api/Api.csproj", "Api/"]
+RUN dotnet restore "./Api/Api.csproj"
 COPY . .
-WORKDIR "/src/Messenger2"
-RUN dotnet build "./Messenger2.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/Api"
+RUN dotnet build "./Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # Этот этап используется для публикации проекта службы, который будет скопирован на последний этап
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Messenger2.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # Этот этап используется в рабочей среде или при запуске из VS в обычном режиме (по умолчанию, когда конфигурация отладки не используется)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Messenger2.dll"]
+ENTRYPOINT ["dotnet", "Messenger2.Api.dll"]

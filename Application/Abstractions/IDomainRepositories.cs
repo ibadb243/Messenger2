@@ -6,12 +6,16 @@ public interface IUserRepository : IRepository<User, int>
 {
     Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
+    Task<IReadOnlyList<User>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default);
 }
 
 public interface IChatRepository : IRepository<Chat, int>
 {
     /// <summary>Чаты, в которых состоит пользователь.</summary>
     Task<IReadOnlyList<Chat>> GetByUserAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>Личный чат ровно между двумя пользователями, если он уже есть.</summary>
+    Task<Chat?> FindPrivateChatAsync(int userA, int userB, CancellationToken ct = default);
 }
 
 /// <summary>Участники чатов. Ключ — (UserId, ChatId).</summary>

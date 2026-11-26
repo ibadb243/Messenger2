@@ -4,9 +4,9 @@
     <File Path="docker-compose.yml" />
     <File Path="mssql.sql" />
   </Folder>
+  <Project Path="Api/Api.csproj" />
   <Project Path="Application/Application.csproj" />
   <Project Path="Domain/Domain.csproj" />
   <Project Path="Infrastructure/Infrastructure.csproj" />
-  <Project Path="Messenger2/Messenger2.csproj" />
   <Project Path="Syncer/Syncer.csproj" />
 </Solution>

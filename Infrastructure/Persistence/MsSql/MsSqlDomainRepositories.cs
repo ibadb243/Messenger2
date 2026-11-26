@@ -14,6 +14,9 @@ public class UserRepository(MsSqlDbContext db) : EfRepository<User, int>(db), IU
 
     public Task<bool> EmailExistsAsync(string email, CancellationToken ct = default) =>
         Db.Users.AnyAsync(u => u.Email == email, ct);
+
+    public async Task<IReadOnlyList<User>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default) =>
+        await Db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).OrderBy(u => u.Id).ToListAsync(ct);
 }
 
 public class ChatRepository(MsSqlDbContext db) : EfRepository<Chat, int>(db), IChatRepository
@@ -27,6 +30,12 @@ public class ChatRepository(MsSqlDbContext db) : EfRepository<Chat, int>(db), IC
             .Select(m => m.Chat)
             .OrderBy(c => c.Id)
             .ToListAsync(ct);
+
+    public Task<Chat?> FindPrivateChatAsync(int userA, int userB, CancellationToken ct = default) =>
+        Db.Chats.AsNoTracking().FirstOrDefaultAsync(c =>
+            c.Type == ChatType.Private
+            && c.Members.Any(m => m.UserId == userA)
+            && c.Members.Any(m => m.UserId == userB), ct);
 }
 
 public class MemberRepository(MsSqlDbContext db)

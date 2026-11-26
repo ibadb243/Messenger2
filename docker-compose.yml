@@ -14,11 +14,11 @@ services:
     ports:
       - "9042:9042"
 
-  app:
+  api:
     build:
       context: .
-      dockerfile: Messenger2/Dockerfile
-    container_name: my_app
+      dockerfile: Api/Dockerfile
+    container_name: my_api
     depends_on:
       - mssql
       - cassandra
@@ -33,6 +33,10 @@ services:
       Cassandra__Keyspace: messenger
       Cassandra__TruncateTimeoutMs: 60000
       Serilog__MinimumLevel__Default: Information
+      Jwt__Secret: "change-me-to-a-long-random-string-at-least-32-chars"
+      Jwt__Issuer: Messenger2
+      Jwt__Audience: Messenger2
+      Jwt__ExpiresMinutes: 60
 
   syncer:
     build:
