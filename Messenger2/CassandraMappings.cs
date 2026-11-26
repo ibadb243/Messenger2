@@ -4,12 +4,10 @@ namespace Messenger2;
 
 public class CassandraMappings : Mappings
 {
-    private const string Keyspace = "messenger";
-
-    public CassandraMappings()
+    public CassandraMappings(string keyspace)
     {
         For<UserById>()
-            .KeyspaceName(Keyspace).TableName("users_by_id")
+            .KeyspaceName(keyspace).TableName(CassandraTables.UsersById)
             .PartitionKey(x => x.Id)
             .ExplicitColumns()
             .Column(x => x.Id, c => c.WithName("id"))
@@ -18,7 +16,7 @@ public class CassandraMappings : Mappings
             .Column(x => x.AvatarUrl, c => c.WithName("avatar_url"));
 
         For<ChatById>()
-            .KeyspaceName(Keyspace).TableName("chats_by_id")
+            .KeyspaceName(keyspace).TableName(CassandraTables.ChatsById)
             .PartitionKey(x => x.Id)
             .ExplicitColumns()
             .Column(x => x.Id, c => c.WithName("id"))
@@ -29,7 +27,7 @@ public class CassandraMappings : Mappings
             .Column(x => x.CreatedAt, c => c.WithName("created_at"));
 
         For<MemberByChat>()
-            .KeyspaceName(Keyspace).TableName("members_by_chat")
+            .KeyspaceName(keyspace).TableName(CassandraTables.MembersByChat)
             .PartitionKey(x => x.ChatId)
             .ClusteringKey(x => x.UserId)
             .ExplicitColumns()
@@ -39,7 +37,7 @@ public class CassandraMappings : Mappings
             .Column(x => x.CreatedAt, c => c.WithName("created_at"));
 
         For<ChatByUser>()
-            .KeyspaceName(Keyspace).TableName("chats_by_user")
+            .KeyspaceName(keyspace).TableName(CassandraTables.ChatsByUser)
             .PartitionKey(x => x.UserId)
             .ClusteringKey(x => x.ChatId)
             .ExplicitColumns()
@@ -47,7 +45,7 @@ public class CassandraMappings : Mappings
             .Column(x => x.ChatId, c => c.WithName("chat_id"));
 
         For<MessageByChat>()
-            .KeyspaceName(Keyspace).TableName("messages_by_chat")
+            .KeyspaceName(keyspace).TableName(CassandraTables.MessagesByChat)
             .PartitionKey(x => x.ChatId)
             .ClusteringKey(x => x.Id, SortOrder.Descending)
             .ExplicitColumns()
@@ -59,7 +57,7 @@ public class CassandraMappings : Mappings
             .Column(x => x.EditedAt, c => c.WithName("edited_at"));
 
         For<SyncState>()
-            .KeyspaceName(Keyspace).TableName("sync_state")
+            .KeyspaceName(keyspace).TableName(CassandraTables.SyncState)
             .PartitionKey(x => x.TableName)
             .ExplicitColumns()
             .Column(x => x.TableName, c => c.WithName("table_name"))

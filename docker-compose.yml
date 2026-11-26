@@ -3,20 +3,16 @@ services:
     image: mcr.microsoft.com/mssql/server:2025-latest
     container_name: mssql
     environment:
-      SA_PASSWORD: "YourStrong!Passw0rd"
       ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
     ports:
       - "1433:1433"
-    networks:
-      default:
 
   cassandra:
     image: cassandra:latest
     container_name: cassandra
     ports:
       - "9042:9042"
-    networks:
-      default:
 
   app:
     build:
@@ -29,11 +25,13 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ConnectionStrings__MsSqlServer=Server=mssql,1433;Database=messenger;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True
-      - Sync__CassandraHosts__0=cassandra
-    networks:
-      default:
- 
-networks:
-  default:
-    driver: bridge
+      ASPNETCORE_ENVIRONMENT: Production
+      # Пароль в строке подключения должен совпадать с MSSQL_SA_PASSWORD выше.
+      ConnectionStrings__MsSqlServer: "Server=mssql,1433;Database=messenger;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True"
+      Cassandra__Hosts__0: cassandra
+      Cassandra__Port: 9042
+      Cassandra__Keyspace: messenger
+      Cassandra__TruncateTimeoutMs: 60000
+      Sync__IntervalSeconds: 5
+      Sync__ParallelDegree: 5
+      Serilog__MinimumLevel__Default: Information

@@ -11,7 +11,7 @@ public class Synchronizer(
     IOptions<SyncOptions> options,
     ILogger<Synchronizer> logger)
 {
-    private readonly int _parallelism = 5;
+    private readonly int _parallelism = options.Value.ParallelDegree;
 
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
@@ -22,52 +22,53 @@ public class Synchronizer(
         var current = await ct.CurrentVersionAsync(cancellationToken);
 
         var reloadReasons = new List<string>();
-        foreach (var table in MsSqlChangeTracking.Tables)
+        foreach (var table in MsSqlTables.All)
         {
             var minValid = await ct.MinValidVersionAsync(table, cancellationToken);
             if (!saved.TryGetValue(table, out var last))
-                reloadReasons.Add($"{table}: версии нет");
+                reloadReasons.Add($"{table}: version missing");
             else if (last < minValid)
-                reloadReasons.Add($"{table}: версия {last} < минимально допустимой {minValid}");
+                reloadReasons.Add($"{table}: version {last} < min valid {minValid}");
         }
 
         if (reloadReasons.Count > 0)
         {
-            logger.LogWarning("Полная перезагрузка ({Reasons})", string.Join("; ", reloadReasons));
+            logger.LogWarning("Full reload required: {Reasons}", string.Join("; ", reloadReasons));
             await FullReloadAsync(current, cancellationToken);
             await tx.CommitAsync(cancellationToken);
             return;
         }
 
-        if (MsSqlChangeTracking.Tables.All(t => saved[t] == current))
+        if (MsSqlTables.All.All(t => saved[t] == current))
         {
+            logger.LogDebug("No changes, version {Version}", current);
             await tx.CommitAsync(cancellationToken);
             return;
         }
 
-        var users = await ct.UserChangesAsync(saved["Users"], cancellationToken);
-        var chats = await ct.ChatChangesAsync(saved["Chats"], cancellationToken);
-        var members = await ct.MemberChangesAsync(saved["Members"], cancellationToken);
-        var messages = await ct.MessageChangesAsync(saved["Messages"], cancellationToken);
+        var users = await ct.UserChangesAsync(saved[MsSqlTables.Users], cancellationToken);
+        var chats = await ct.ChatChangesAsync(saved[MsSqlTables.Chats], cancellationToken);
+        var members = await ct.MemberChangesAsync(saved[MsSqlTables.Members], cancellationToken);
+        var messages = await ct.MessageChangesAsync(saved[MsSqlTables.Messages], cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
         await ApplyAsync(users, ApplyUserAsync, cancellationToken);
-        await store.SaveVersionAsync("Users", current);
+        await store.SaveVersionAsync(MsSqlTables.Users, current);
 
         await ApplyAsync(chats, ApplyChatAsync, cancellationToken);
-        await store.SaveVersionAsync("Chats", current);
+        await store.SaveVersionAsync(MsSqlTables.Chats, current);
 
         await ApplyAsync(members, ApplyMemberAsync, cancellationToken);
-        await store.SaveVersionAsync("Members", current);
+        await store.SaveVersionAsync(MsSqlTables.Members, current);
 
         var orphaned = messages.Count(m => !m.RowExists);
         await ApplyAsync(messages.Where(m => m.RowExists), ApplyMessageAsync, cancellationToken);
-        await store.SaveVersionAsync("Messages", current);
+        await store.SaveVersionAsync(MsSqlTables.Messages, current);
 
-        if (orphaned > 0) logger.LogDebug("Пропущено {Count} физически удалённых сообщений без chat_id " +
-                         "(ожидаемо при каскадном удалении чата)", orphaned);
+        if (orphaned > 0) logger.LogDebug("Skipped {Count} physically deleted messages without chat_id (expected on chat cascade delete)", orphaned);
 
-        logger.LogInformation("Version {Version}: users {U}, chats {C}, members {M}, messages {Msg}",
+        logger.LogInformation(
+            "Synced to version {Version}: users {Users}, chats {Chats}, members {Members}, messages {Messages}",
             current, users.Count, chats.Count, members.Count, messages.Count);
     }
 
@@ -156,10 +157,10 @@ public class Synchronizer(
         }), cancellationToken);
 
         // Версии пишем последними: пока их нет, незавершённая перезагрузка повторится.
-        foreach (var table in MsSqlChangeTracking.Tables)
+        foreach (var table in MsSqlTables.All)
             await store.SaveVersionAsync(table, version);
 
-        logger.LogInformation("{Version}", version);
+        logger.LogInformation("Full reload completed, version {Version}", version);
     }
 
     private Task ApplyAsync<T>(IEnumerable<T> items, Func<T, Task> apply, CancellationToken ct) =>

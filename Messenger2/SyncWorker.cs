@@ -10,7 +10,9 @@ public class SyncWorker(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(options.Value.IntervalSeconds));
+        var interval = TimeSpan.FromSeconds(options.Value.IntervalSeconds);
+        using var timer = new PeriodicTimer(interval);
+        logger.LogInformation("Sync worker started, interval {Interval}", interval);
 
         try
         {
@@ -24,14 +26,14 @@ public class SyncWorker(
                 }
                 catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
                 {
-                    logger.LogError(ex, "Sync error");
+                    logger.LogError(ex, "Sync failed, retrying in {Interval}", interval);
                 }
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            
+            logger.LogInformation("Sync worker stopped");
         }
     }
 }

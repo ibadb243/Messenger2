@@ -3,9 +3,8 @@
 namespace Messenger2;
 
 public class MsSqlChangeTracking(MsSqlDbContext db)
+// CHANGETABLE table names below mirror MsSqlTables: FromSql cannot parameterize identifiers.
 {
-    public static readonly string[] Tables = ["Users", "Chats", "Members", "Messages"];
-
     public async Task<long> CurrentVersionAsync(CancellationToken ct)
     {
         var version = await db.Database
@@ -17,7 +16,7 @@ public class MsSqlChangeTracking(MsSqlDbContext db)
 
     public async Task<long> MinValidVersionAsync(string table, CancellationToken ct)
     {
-        var objectName = "dbo." + table;
+        var objectName = $"{MsSqlTables.Schema}.{table}";
         var version = await db.Database
             .SqlQuery<long?>($"SELECT CHANGE_TRACKING_MIN_VALID_VERSION(OBJECT_ID({objectName})) AS Value")
             .SingleAsync(ct);
